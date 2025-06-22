@@ -1,5 +1,7 @@
 # The All-in-One Cybersecurity Homelab (Docker Edition)
 
+<p align="center"> <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"> <img src="https://img.shields.io/badge/Kali_Linux-557C94?style=for-the-badge&logo=kalilinux&logoColor=white" alt="Kali Linux"> <img src="https://img.shields.io/badge/Ghidra-000000?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Ghidra"> <img src="https://img.shields.io/badge/Metasploit-DC382D?style=for-the-badge&logo=metasploit&logoColor=white" alt="Metasploit"> <img src="https://img.shields.io/badge/SIEM-ELK_Stack-005571?style=for-the-badge&logo=elasticstack&logoColor=white" alt="SIEM"> </p>
+
 > A complete, containerized cybersecurity home lab for offensive penetration testing, defensive analysis with a SIEM, and software reverse engineering.
 
 ## 🚀 Project Overview
