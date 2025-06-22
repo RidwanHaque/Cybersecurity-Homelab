@@ -163,3 +163,152 @@ This project plan was inspired by the excellent research and tutorials from the 
 *   [IppSec's Homelab Overview](https://youtu.be/kku0fVfksrk?si=mi9ffb0EoUxwojxX)
 *   [John Hammond's SIEM Setup](https://youtu.be/cMQtGjQOq0c?si=gkDc3YnrCy_JrFrk)
 *   [NetworkChuck's Hacking Lab](https://youtu.be/XIvn0ZDSmKA?si=Cov5h9J22sqqfoA4)
+
+
+
+
+
+
+
+The best and most modern way to deploy a full open-source honeypot stack (multiple honeypots, a SIEM, and a dashboard) is to use **T-Pot**. T-Pot is a brilliant all-in-one platform that packages numerous honeypot tools (like Cowrie, Honeytrap, etc.) and a full ELK stack (Elasticsearch, Logstash, Kibana) into a single, easy-to-install system using Docker.
+
+This plan uses T-Pot because it directly achieves your goal of a powerful, open-source system with a world map, and it is the standard method for a comprehensive honeypot deployment on AWS [1][2][3].
+
+---
+
+# Project: Live Threat Intelligence Honeypot on AWS with T-Pot
+
+<p align="center"> <img src="https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white" alt="AWS"> <img src="https://img.shields.io/badge/T--Pot-4B0082?style=for-the-badge&logo=linux&logoColor=white" alt="T-Pot"> <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"> <img src="https://img.shields.io/badge/SIEM-ELK_Stack-005571?style=for-the-badge&logo=elasticstack&logoColor=white" alt="ELK Stack"> </p>
+
+
+This guide details how to deploy a comprehensive, multi-service honeypot using the T-Pot platform on Amazon Web Services (AWS). The project will create a live, public-facing decoy system to attract, capture, and analyze real-world cyberattacks, visualizing the data on a live world map.
+
+This project is a standalone, cloud-based initiative and should be kept entirely separate from your local, isolated practice lab.
+
+## 📋 Table of Contents
+
+1.  [⚠️ Critical Warnings: Security & Cost](#️-critical-warnings-security--cost)
+2.  [🛠️ Prerequisites](#️-prerequisites)
+3.  [Phase 1: Launching the AWS EC2 Instance ☁️](#phase-1-launching-the-aws-ec2-instance-️)
+4.  [Phase 2: Installing T-Pot on the VM 🍯](#phase-2-installing-t-pot-on-the-vm-)
+5.  [Phase 3: Accessing Your Honeypot Dashboards 🗺️](#phase-3-accessing-your-honeypot-dashboards-️)
+
+---
+
+## ⚠️ Critical Warnings: Security & Cost
+
+### Security
+This project creates a virtual machine that is **intentionally exposed to the internet** to attract attackers.
+*   **NEVER** store any personal or sensitive data on this machine.
+*   **ONLY** use this VM for the honeypot. Do not use it for any other activity.
+*   Always access the VM using a secure SSH key, not a password.
+
+### Cost
+This project requires a more powerful virtual machine than a typical free-tier instance and **will incur costs**.
+*   T-Pot requires significant resources (RAM and CPU) to run its many services (ELK Stack, multiple honeypots) [2][3].
+*   An instance like a `t3.xlarge` can cost around **$7-10 per day** [1].
+*   **Remember to STOP or TERMINATE your EC2 instance** as soon as you are finished with the project to avoid unexpected charges.
+
+---
+
+## 🛠️ Prerequisites
+
+*   An **Amazon Web Services (AWS) Account**.
+*   Familiarity with the AWS Management Console.
+*   An **SSH client**. This is built into macOS (Terminal) and Linux. For Windows, you can use PowerShell or [PuTTY](https://www.putty.org/).
+
+---
+
+## Phase 1: Launching the AWS EC2 Instance ☁️
+
+This is the most critical phase. Follow these settings precisely to ensure T-Pot has the resources and network access it needs.
+
+1.  **Navigate to the EC2 Dashboard:**
+    *   Log into your AWS account.
+    *   Go to the EC2 service and click "Launch instances".
+
+2.  **Choose the AMI (Operating System):**
+    *   In the search bar for AMIs, type **"Debian 11"** and press Enter.
+    *   Click on the **"AWS Marketplace AMIs"** tab.
+    *   Select the official **Debian 11** image. T-Pot requires Debian, and this specific version is recommended for compatibility [1][2].
+
+3.  **Select the Instance Type:**
+    *   T-Pot is resource-heavy. You must choose an instance with at least 4GB of RAM, but **16GB is highly recommended** for stable performance [2].
+    *   Select an instance type like **`t3.xlarge`**. This provides enough power to run the honeypots and the ELK stack smoothly [3].
+
+4.  **Configure a Key Pair:**
+    *   In the "Key pair (login)" section, create a new key pair.
+    *   Give it a memorable name (e.g., `tpot-key`).
+    *   Download the `.pem` file and save it somewhere secure. **You will not be able to download it again.**
+
+5.  **Configure Network Settings (Security Group):**
+    *   Click "Edit" on the Network settings panel.
+    *   Create a new security group.
+    *   **Rule 1 (Honeypot Traffic):** Add a rule to allow **All traffic** from source **Anywhere (`0.0.0.0/0`)**. This opens all ports on your VM, allowing T-Pot to listen for attacks on any service it emulates.
+    *   **Rule 2 (Management Access):** Add another rule to allow **SSH (TCP port 22)** from source **My IP**. This ensures only you can securely connect to the machine for setup.
+
+6.  **Configure Storage:**
+    *   T-Pot and its logs require significant disk space.
+    *   Set the storage size to at least **128 GB** of General Purpose SSD (gp2/gp3) [3].
+
+7.  **Launch the Instance:**
+    *   Review your settings and click "Launch instance". Wait a few minutes for the instance to initialize.
+    *   Once it's running, find and copy its **Public IPv4 address** from the EC2 dashboard.
+
+---
+
+## Phase 2: Installing T-Pot on the VM 🍯
+
+Now you will connect to your new cloud server and install the T-Pot software.
+
+1.  **Connect via SSH:**
+    *   Open your terminal or SSH client.
+    *   Use the `.pem` key file you downloaded to connect. Replace `` and `` with your actual values. The default username for Debian AMIs is `admin`.
+    ```bash
+    ssh -i /path/to/ admin@
+    ```
+
+2.  **Update the System and Install Git:**
+    *   Once connected, run the following command to make sure the system is up-to-date and has Git installed [2]:
+    ```bash
+    sudo apt update && sudo apt upgrade -y && sudo apt install git -y
+    ```
+
+3.  **Clone the T-Pot Repository:**
+    *   Use Git to download the official T-Pot installation files.
+    ```bash
+    git clone https://github.com/telekom-security/tpotce.git
+    ```
+
+4.  **Run the Installer:**
+    *   Navigate into the newly created directory and run the installation script.
+    ```bash
+    cd tpotce/
+    sudo ./install.sh
+    ```
+    *   The script will start an interactive setup. You will be asked to:
+        *   Choose an edition. The **'STANDARD'** edition is a great choice to start with.
+        *   Create a username and a strong password for web access. **Save this password securely!** This is how you will log into your dashboards.
+    *   The installation will take a long time (15-30 minutes) as it downloads and configures numerous Docker containers. Once it's done, it will prompt you to reboot. Reboot the system.
+
+---
+
+## Phase 3: Accessing Your Honeypot Dashboards 🗺️
+
+After the system reboots, your honeypot is live and collecting data.
+
+1.  **Access the Web Interface:**
+    *   Open a web browser and go to: `https://:64297`
+    *   You will see a browser warning about an untrusted security certificate. This is normal. Click "Advanced" and proceed to the site.
+    *   Log in with the web username and password you created during the installation.
+
+2.  **Explore Your Dashboards:**
+    You now have access to a powerful suite of tools:
+    *   **Attack Map:** The live world map showing real-time attack sources. This may be blank at first but will populate as attackers find your honeypot.
+    *   **T-Pot Dashboard:** An overview of system health and key attack metrics.
+    *   **Kibana:** The data visualization tool for the ELK stack. Here you can create custom dashboards and dive deep into the raw log data to analyze attacker techniques, usernames, passwords, and payloads.
+
+**Congratulations!** You have successfully deployed a live, enterprise-grade honeypot in the cloud. Let it run for a few hours or a day and check back to see what you've caught.
+
+> **Final Reminder:** Don't forget to **TERMINATE** the EC2 instance in the AWS console when you are done to stop incurring costs.
+
